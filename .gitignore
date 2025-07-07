@@ -1,0 +1,14 @@
+node_modules/
+
+*.json
+
+serviceAccount.json
+
+uploads/
+
+logs
+*.log
+npm-debug.log*
+.env
+.DS_Store
+Thumbs.db
