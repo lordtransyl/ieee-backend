@@ -3,15 +3,16 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const admin = require('firebase-admin');
 const cors = require('cors');
-const path = require('path');
 const fs = require('fs');
 
-const serviceAccount = require('./serviceAccount.json');
 const upload = multer({ dest: 'uploads/' });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Parse service account from FIREBASE_KEY environment variable
+const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -19,9 +20,8 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-
 const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(__dirname, 'serviceAccount.json'), 
+  credentials: serviceAccount,
   scopes: ['https://www.googleapis.com/auth/drive'],
 });
 
@@ -37,7 +37,7 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
     const response = await drive.files.create({
       requestBody: {
         name: file.originalname,
-        parents: ['1k5B9ltrTvt93bS8b9A8R285ro4vLfbJh'], 
+        parents: ['1k5B9ltrTvt93bS8b9A8R285ro4vLfbJh'], // your Drive folder ID
       },
       media: {
         mimeType: file.mimetype,
@@ -47,7 +47,7 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
 
     const fileId = response.data.id;
 
-    
+    // Make file public readable
     await drive.permissions.create({
       fileId,
       requestBody: {
@@ -58,7 +58,7 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
 
     const pdfURL = `https://drive.google.com/uc?id=${fileId}`;
 
-    
+    // Save metadata to Firestore
     await db.collection('abstracts').add({
       name,
       email,
@@ -67,7 +67,7 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
       submittedAt: new Date(),
     });
 
-    
+    // Delete the uploaded file from local storage
     fs.unlinkSync(file.path);
 
     res.json({ success: true, pdfURL });
@@ -77,6 +77,7 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
   }
 });
 
-app.listen(5000, () => {
-  console.log('Server running on http://localhost:5000');
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
