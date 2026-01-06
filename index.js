@@ -30,14 +30,12 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
     const driveClient = await auth.getClient();
     const drive = google.drive({ version: 'v3', auth: driveClient });
 
-    // Upload PDF to Shared Drive
+    // Upload PDF to service account's personal Drive (root folder)
     const response = await drive.files.create({
       requestBody: {
         name: file.originalname,
-        parents: ['1qgotEv7QZxaADxyUdfDJTORh0aRUuMK4'], 
       },
       media: { mimeType: file.mimetype, body: fs.createReadStream(file.path) },
-      supportsAllDrives: true, // required for shared drives
     });
 
     const fileId = response.data.id;
@@ -46,7 +44,6 @@ app.post('/upload', upload.single('pdfFile'), async (req, res) => {
     await drive.permissions.create({
       fileId,
       requestBody: { role: 'reader', type: 'anyone' },
-      supportsAllDrives: true,
     });
 
     const pdfURL = `https://drive.google.com/uc?id=${fileId}`;
